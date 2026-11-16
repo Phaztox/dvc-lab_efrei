@@ -1,0 +1,9 @@
+# Python environment
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+
+# Local MLflow tracking data (experiments live on the tracking server, not in git)
+mlflow.db
+mlruns/
+mlartifacts/

@@ -1,0 +1,67 @@
+name: Build API Docker image
+
+on:
+  push:
+    branches: [main]
+  # "Run workflow" button in the Actions tab: rebuild to ship a newly promoted model
+  # without changing any code.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Check that the DagsHub token secret is set
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        run: |
+          if [ -z "$DAGSHUB_TOKEN" ]; then
+            echo "::error::Repository secret DAGSHUB_TOKEN is missing (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # The build downloads the current RandomForest_Digits@champion model from DagsHub.
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true  # keep the image in the runner's Docker so the next step can run it
+          tags: |
+            digits-api:latest
+            digits-api:${{ github.sha }}
+          secrets: |
+            dagshub_token=${{ secrets.DAGSHUB_TOKEN }}
+          build-args: |
+            MODEL_CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Smoke test the API
+        run: |
+          docker run -d --name digits-api -p 8000:8000 digits-api:latest
+
+          # Wait for the API to start (model loading takes a few seconds).
+          for i in $(seq 1 30); do
+            if curl -sf -X POST http://127.0.0.1:8000/predict \
+                 -H "Content-Type: application/json" -d @sample.json -o response.json; then
+              break
+            fi
+            sleep 2
+          done
+
+          echo "Response:"; cat response.json; echo
+          # sample.json holds the first 5 images of load_digits, i.e. the digits 0 to 4.
+          jq -e '.predictions == [0, 1, 2, 3, 4]' response.json
+
+      - name: Show container logs
+        if: always()
+        run: docker logs digits-api || true

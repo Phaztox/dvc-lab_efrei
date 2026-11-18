@@ -1,0 +1,15 @@
+# Dependencies of the Docker image (FastAPI app). The notebook uses .venv instead.
+
+# API
+fastapi==0.163.1
+uvicorn==0.54.0
+
+# Model runtime: must match the versions the model was trained with
+# (see requirements.txt of the model in the DagsHub registry).
+# mlflow-skinny = MLflow client + model loading, without the tracking server/UI (much smaller image).
+mlflow-skinny==3.18.0
+scikit-learn==1.9.1
+skops==0.16.0
+numpy==2.5.5
+pandas==3.1.1
+scipy==1.18.1

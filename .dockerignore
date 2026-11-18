@@ -1,0 +1,6 @@
+# Allow-list: only send what the image needs to the Docker build.
+# Everything else (.venv, data/, .dvc/, .git, notebook, local MLflow data) stays out.
+*
+!requirements.txt
+!app/download_model.py
+!app/main.py
